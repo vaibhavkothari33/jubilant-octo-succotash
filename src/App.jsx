@@ -9,6 +9,7 @@ import CreateCourse from './pages/CreateCourse';
 import About from './pages/About';
 import CourseDetails from './pages/CourseDetails';
 import NotFound from './pages/NotFound';
+import RoadmapGenerator from './pages/RoadmapGenerator';
 // import { EduChainABI, CertificateNFTABI } from './contracts/abis';
 // import { EduChainAddress, CertificateNFTAddress } from './contracts/addresses';
 import { ThemeProvider } from './context/ThemeContext';
@@ -55,6 +56,7 @@ function App() {
               <Route index element={<Courses />} />
               <Route path=":courseId" element={<CourseDetails />} />
             </Route>
+            <Route path="roadmap" element={<RoadmapGenerator />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="create-course" element={<CreateCourse />} />
             <Route path="about" element={<About />} />

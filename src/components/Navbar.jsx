@@ -19,6 +19,7 @@ const Navbar = ({ account, onConnect }) => {
 
   const navLinks = [
     { path: '/courses', label: 'Courses' },
+    { path: '/roadmap', label: 'Learning Roadmap' },
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/create-course', label: 'Create Course' },
     { path: '/about', label: 'About' },
