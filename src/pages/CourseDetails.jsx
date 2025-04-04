@@ -1,67 +1,44 @@
-import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaPlay, FaUser, FaClock, FaBook, FaCertificate, FaChalkboardTeacher, 
          FaStar, FaEthereum, FaLinkedin, FaGithub, FaGlobe } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
+import { useCourseMarketplace } from '../context/CourseMarketplaceContext';
 
 const CourseDetails = () => {
   const { courseId } = useParams();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { getClient } = useCourseMarketplace();
 
-  // Sample course data - this would normally come from your blockchain or API
-  const courseData = {
-    1: {
-      id: 1,
-      title: "Blockchain Fundamentals",
-      description: "A comprehensive introduction to blockchain technology, covering everything from basic cryptography to advanced consensus mechanisms.",
-      price: "0.1",
-      instructor: {
-        name: "Dr. Sarah Johnson",
-        title: "Blockchain Research Scientist",
-        bio: "Ph.D. in Distributed Systems with 10+ years of experience in blockchain development and research.",
-        avatar: `https://ui-avatars.com/api/?name=Sarah+Johnson&background=random`
-      },
-      duration: "8 weeks",
-      level: "Beginner",
-      rating: 4.8,
-      students: 1234,
-      lastUpdated: "2024-03-01",
-      topics: [
-        "Introduction to Blockchain",
-        "Cryptography Basics",
-        "Consensus Mechanisms",
-        "Smart Contracts"
-      ]
-    },
-    2: {
-      id: 2,
-      title: "Smart Contract Development",
-      description: "Master Solidity programming and learn to write, test, and deploy secure smart contracts.",
-      price: "0.2",
-      instructor: {
-        name: "Alex Chen",
-        title: "Senior Smart Contract Developer",
-        bio: "15+ years in software development, specialized in blockchain since 2016.",
-        avatar: `https://ui-avatars.com/api/?name=Alex+Chen&background=random`
-      },
-      duration: "10 weeks",
-      level: "Intermediate",
-      rating: 4.9,
-      students: 856,
-      lastUpdated: "2024-03-15",
-      topics: [
-        "Solidity Basics",
-        "Smart Contract Security",
-        "Testing & Deployment",
-        "DApp Integration"
-      ]
-    }
-  };
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const course = courseData[courseId];
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        const client = getClient();
+        const courseData = await client.getCourseInfo(courseId);
+        setCourse(courseData);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!course) {
+    fetchCourse();
+  }, [courseId, getClient]);
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen ${theme.background} ${theme.text.primary} flex flex-col items-center justify-center`}>
+        <p>Loading course details...</p>
+      </div>
+    );
+  }
+
+  if (error || !course) {
     return (
       <div className={`min-h-screen ${theme.background} ${theme.text.primary} flex flex-col items-center justify-center`}>
         <h2 className="text-2xl font-bold mb-4">Course Not Found</h2>
@@ -97,60 +74,55 @@ const CourseDetails = () => {
             </p>
             <div className="flex flex-wrap gap-4">
               <span className={`flex items-center ${theme.text.secondary}`}>
-                <FaUser className="mr-2" /> {course.students} students
+                <FaUser className="mr-2" /> {course.enrolledUsers} enrolled
               </span>
               <span className={`flex items-center ${theme.text.secondary}`}>
-                <FaClock className="mr-2" /> {course.duration}
+                <FaBook className="mr-2" /> {course.moduleCount} modules
               </span>
               <span className={`flex items-center ${theme.text.secondary}`}>
-                <FaBook className="mr-2" /> {course.level}
+                <FaClock className="mr-2" /> {course.duration} hours
               </span>
-              <span className={`flex items-center ${theme.text.accent}`}>
-                <FaStar className="mr-2" /> {course.rating}/5.0
-              </span>
+              {!course.isActive && (
+                <span className={`flex items-center text-red-500`}>
+                  Currently Unavailable
+                </span>
+              )}
             </div>
           </div>
 
           {/* Enrollment Card */}
           <div className={`${theme.card} rounded-xl shadow-lg p-6 border ${theme.border}`}>
             <div className="text-center mb-6">
+              <img 
+                src={`https://ipfs.io/ipfs/${course.thumbnailIpfsHash}`}
+                alt={course.title}
+                className="w-full h-48 object-cover rounded-lg mb-4"
+              />
               <div className="flex items-center justify-center mb-4">
                 <FaEthereum className={`text-2xl ${theme.text.accent} mr-2`} />
                 <span className="text-3xl font-bold">{course.price} ETH</span>
               </div>
               <button 
-                className={`w-full bg-gradient-to-r ${theme.primary} text-white py-3 rounded-lg hover:shadow-lg transform transition-all duration-200 hover:scale-105`}
+                className={`w-full bg-gradient-to-r ${theme.primary} text-white py-3 rounded-lg hover:shadow-lg transform transition-all duration-200 hover:scale-105 ${!course.isActive && 'opacity-50 cursor-not-allowed'}`}
+                disabled={!course.isActive}
               >
-                Enroll Now
+                {course.isActive ? 'Enroll Now' : 'Currently Unavailable'}
               </button>
             </div>
-            <div className={`border-t ${theme.border} pt-4`}>
-              <h3 className="font-semibold mb-3">Course Topics:</h3>
-              <ul className={`space-y-2 ${theme.text.secondary}`}>
-                {course.topics.map((topic, index) => (
-                  <li key={index} className="flex items-center">
-                    <FaCertificate className="mr-2" />
-                    {topic}
-                  </li>
-                ))}
-              </ul>
+            <div className="text-sm text-center">
+              <p>Total Sales: {course.totalSales}</p>
+              <p>Course ID: {course.id}</p>
             </div>
           </div>
         </div>
 
-        {/* Instructor Section */}
+        {/* Creator Section */}
         <div className={`${theme.card} rounded-xl p-6 border ${theme.border} mb-12`}>
-          <h2 className="text-2xl font-bold mb-6">Instructor</h2>
+          <h2 className="text-2xl font-bold mb-6">Creator</h2>
           <div className="flex items-center space-x-4">
-            <img 
-              src={course.instructor.avatar}
-              alt={course.instructor.name}
-              className="w-16 h-16 rounded-full"
-            />
             <div>
-              <h3 className="font-semibold">{course.instructor.name}</h3>
-              <p className={theme.text.secondary}>{course.instructor.title}</p>
-              <p className={`${theme.text.secondary} mt-2`}>{course.instructor.bio}</p>
+              <h3 className="font-semibold">Creator Address</h3>
+              <p className={theme.text.secondary}>{course.creator}</p>
             </div>
           </div>
         </div>

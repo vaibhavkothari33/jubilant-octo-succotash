@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { FaEthereum } from 'react-icons/fa';
+import { useCourseMarketplace } from '../hooks/useCourseMarketplace';
 
 const WalletConnect = ({ onConnect }) => {
   const [account, setAccount] = useState('');
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
+  const { initialize, error: clientError } = useCourseMarketplace();
 
   useEffect(() => {
     checkMetaMaskInstallation();
@@ -44,6 +46,10 @@ const WalletConnect = ({ onConnect }) => {
           method: 'eth_requestAccounts'
         });
         handleAccountsChanged(accounts);
+        
+        // Initialize the client using the hook
+        const contractAddress = process.env.VITE_CONTRACT_ADDRESS;
+        initialize(window.ethereum, contractAddress, accounts[0]);
       } catch (error) {
         console.error('Error connecting wallet:', error);
       }
@@ -68,6 +74,11 @@ const WalletConnect = ({ onConnect }) => {
           <span>
             {account.slice(0, 6)}...{account.slice(-4)}
           </span>
+        </div>
+      )}
+      {clientError && (
+        <div className="text-red-500 text-sm">
+          Client error: {clientError}
         </div>
       )}
     </div>
