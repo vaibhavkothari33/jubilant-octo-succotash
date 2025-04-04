@@ -10,6 +10,7 @@ import About from './pages/About';
 import CourseDetails from './pages/CourseDetails';
 import NotFound from './pages/NotFound';
 import RoadmapGenerator from './pages/RoadmapGenerator';
+import AIAssignment from './pages/AIAssignment';
 // import { EduChainABI, CertificateNFTABI } from './contracts/abis';
 // import { EduChainAddress, CertificateNFTAddress } from './contracts/addresses';
 import { ThemeProvider } from './context/ThemeContext';
@@ -25,21 +26,21 @@ function App() {
         const provider = new ethers.BrowserProvider(window.ethereum);
         setProvider(provider);
 
-        const signer = await provider.getSigner();
+        // const signer = await provider.getSigner();
 
-        const eduChainContract = new ethers.Contract(
-          EduChainAddress,
-          EduChainABI,
-          signer
-        );
-        setEduChain(eduChainContract);
+        // const eduChainContract = new ethers.Contract(
+        //   EduChainAddress,
+        //   EduChainABI,
+        //   signer
+        // );
+        // setEduChain(eduChainContract);
 
-        const certificateNFTContract = new ethers.Contract(
-          CertificateNFTAddress,
-          CertificateNFTABI,
-          signer
-        );
-        setCertificateNFT(certificateNFTContract);
+        // const certificateNFTContract = new ethers.Contract(
+        //   CertificateNFTAddress,
+        //   CertificateNFTABI,
+        //   signer
+        // );
+        // setCertificateNFT(certificateNFTContract);
       }
     };
 
@@ -60,6 +61,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="create-course" element={<CreateCourse />} />
             <Route path="about" element={<About />} />
+            <Route path="ai-assignment" element={<AIAssignment />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

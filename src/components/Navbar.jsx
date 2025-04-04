@@ -23,6 +23,7 @@ const Navbar = ({ account, onConnect }) => {
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/create-course', label: 'Create Course' },
     { path: '/about', label: 'About' },
+    { name: 'AI Assignments', path: '/ai-assignment' },
     // { path: '/contact', label: 'Contact' }
   ];
 
