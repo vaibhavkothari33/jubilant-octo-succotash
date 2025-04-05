@@ -1,45 +1,53 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CourseMarketplaceClient } from '../utils/blockchain';
 
-// Singleton instance
-let clientInstance = null;
-
 /**
  * Custom hook for managing the CourseMarketplace client
  * @returns {Object} Client instance and utility functions
  */
 export const useCourseMarketplace = () => {
-  const [isInitialized, setIsInitialized] = useState(!!clientInstance);
+  const [client, setClient] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState(null);
 
   // Initialize the client
   const initialize = useCallback((provider, contractAddress, account) => {
     try {
-      if (!clientInstance) {
-        clientInstance = new CourseMarketplaceClient(provider, contractAddress);
-        clientInstance.setDefaultAccount(account);
+      if (!client) {
+        const newClient = new CourseMarketplaceClient(provider, contractAddress);
+        newClient.setDefaultAccount(account);
+        setClient(newClient);
         setIsInitialized(true);
+        return newClient;
       }
-      return clientInstance;
+      return client;
     } catch (err) {
       setError(err.message);
       throw err;
     }
-  }, []);
+  }, [client]);
 
-  // Get the client instance
+  // Get the client instance, initializing if needed
   const getClient = useCallback(() => {
-    if (!clientInstance) {
-      const err = new Error('CourseMarketplace client not initialized');
-      setError(err.message);
-      throw err;
+    if (!client) {
+      try {
+        // Get provider, address and account from window.ethereum
+        const provider = window.ethereum;
+        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+        const account = window.ethereum.selectedAddress;
+        
+        return initialize(provider, contractAddress, account);
+      } catch (err) {
+        setError(err.message);
+        throw new Error('Failed to initialize CourseMarketplace client: ' + err.message);
+      }
     }
-    return clientInstance;
-  }, []);
+    return client;
+  }, [client, initialize]);
 
   // Reset the client (useful for testing or when switching accounts)
   const reset = useCallback(() => {
-    clientInstance = null;
+    setClient(null);
     setIsInitialized(false);
     setError(null);
   }, []);
@@ -54,11 +62,11 @@ export const useCourseMarketplace = () => {
   }, [reset]);
 
   return {
-    client: clientInstance,
+    client,
     isInitialized,
     error,
     initialize,
     getClient,
     reset
   };
-}; 
+};

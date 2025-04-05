@@ -31,8 +31,9 @@ const WalletConnect = ({ onConnect }) => {
 
   const handleAccountsChanged = (accounts) => {
     if (accounts.length > 0) {
-      setAccount(accounts[0]);
-      if (onConnect) onConnect(accounts[0]);
+      const newAccount = accounts[0];
+      setAccount(newAccount);
+      if (onConnect) onConnect(newAccount);
     } else {
       setAccount('');
       if (onConnect) onConnect('');
@@ -46,10 +47,6 @@ const WalletConnect = ({ onConnect }) => {
           method: 'eth_requestAccounts'
         });
         handleAccountsChanged(accounts);
-        
-        // Initialize the client using the hook
-        const contractAddress = process.env.VITE_CONTRACT_ADDRESS;
-        initialize(window.ethereum, contractAddress, accounts[0]);
       } catch (error) {
         console.error('Error connecting wallet:', error);
       }
