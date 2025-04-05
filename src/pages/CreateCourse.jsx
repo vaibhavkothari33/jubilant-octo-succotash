@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState ,useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSpinner, FaUpload, FaPlus, FaTrash } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
-import { useEduChain } from '../hooks/useEduChain';
-import { ethers } from 'ethers';
+import { CourseMarketplaceClient } from '../utils/blockchain';
 import { uploadFile, uploadJSON } from '../utils/web3storage';
-
+import Web3s from 'web3';
 const CreateCourse = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { createCourse } = useEduChain();
+  const [courseClient, setCourseClient] = useState(null);
+  // const { createCourse } = useEduChain();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -140,101 +140,114 @@ const CreateCourse = () => {
     }
   };
 
+  useEffect(() => {
+    if (window.ethereum) {
+      const client = new CourseMarketplaceClient(
+        window.ethereum,
+        import.meta.env.VITE_CONTRACT_ADDRESS
+      );
+      setCourseClient(client);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setUploadProgress(0);
-
+  
     try {
+      if (!courseClient) {
+        throw new Error('Blockchain client not initialized');
+      }
+  
       // Validate form data
       if (!formData.title || !formData.description || !formData.price) {
         throw new Error('Please fill in all required fields');
       }
-
+  
       // Upload thumbnail
-      let thumbnailUrl = '';
+      let thumbnailHash = '';
       if (formData.thumbnail) {
         setUploadProgress(10);
         console.log('Uploading thumbnail...');
-        thumbnailUrl = await uploadFile(formData.thumbnail);
+        thumbnailHash = await uploadFile(formData.thumbnail);
       }
-
-      // Upload sections content
-      setUploadProgress(30);
-      console.log('Uploading section content...');
-      const sectionsWithHashes = await Promise.all(
-        formData.sections.map(async (section, index) => {
-          const sectionData = {
-            title: section.title,
-            description: section.description,
-            duration: section.duration || 0
-          };
-
-          if (section.video) {
-            console.log(`Uploading video for section ${index + 1}...`);
-            sectionData.videoHash = await uploadFile(section.video);
-          }
-
-          if (section.materials) {
-            console.log(`Uploading materials for section ${index + 1}...`);
-            sectionData.materialHash = await uploadFile(section.materials);
-          }
-
-          setUploadProgress(30 + ((index + 1) / formData.sections.length) * 40);
-          return sectionData;
-        })
-      );
-
-      // Create and upload metadata
-      setUploadProgress(80);
-      console.log('Creating course metadata...');
-      const metadata = {
-        title: formData.title,
-        description: formData.description,
-        price: formData.price,
-        thumbnail: thumbnailUrl,
-        category: formData.category,
-        difficulty: formData.difficulty,
-        sections: sectionsWithHashes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        version: "1.0"
-      };
-
-      console.log('Uploading metadata to IPFS...');
-      const metadataUrl = await uploadJSON(metadata);
-      setUploadProgress(90);
-
-      // Create course on blockchain
+  
+      // Upload first section video as intro video
+      let introVideoHash = '';
+      if (formData.sections[0].video) {
+        setUploadProgress(20);
+        console.log('Uploading intro video...');
+        introVideoHash = await uploadFile(formData.sections[0].video);
+      }
+  
+      // Create course on blockchain (price needs to be a string)
+      setUploadProgress(40);
       console.log('Creating course on blockchain...');
-      const tx = await createCourse({
-        title: formData.title,
-        description: formData.description,
-        price: ethers.parseEther(formData.price),
-        contentURI: metadataUrl,
-        sections: sectionsWithHashes.map(section => ({
-          title: section.title,
-          description: section.description,
-          videoURI: section.videoHash || '',
-          materialURI: section.materialHash || '',
-          duration: section.duration
-        }))
-      });
-
-      await tx.wait();
+      const createCourseResult = await courseClient.createCourse(
+        formData.title,
+        formData.description,
+        thumbnailHash,
+        introVideoHash,
+        formData.sections[0].duration || 0,
+        formData.price.toString() // Ensure price is a string for proper Wei conversion
+      );
+  
+      // Extract courseId from transaction result
+      const courseId = createCourseResult.courseId;
+      if (!courseId) {
+        throw new Error('Failed to get course ID from transaction result');
+      }
+  
+      // Upload and add each section as a module
+      for (let i = 0; i < formData.sections.length; i++) {
+        const section = formData.sections[i];
+        setUploadProgress(40 + ((i + 1) / formData.sections.length) * 50);
+        
+        // Skip first section if it's already used as intro video
+        if (i === 0 && section.video && introVideoHash) {
+          continue;
+        }
+  
+        // Upload section video
+        let videoHash = '';
+        if (section.video) {
+          console.log(`Uploading video for section ${i + 1}...`);
+          videoHash = await uploadFile(section.video);
+        }
+  
+        // Add module to course
+        console.log(`Adding module ${i + 1} to course...`);
+        await courseClient.addModule(
+          courseId,
+          section.title,
+          videoHash
+        );
+  
+        // Upload and add materials if present
+        if (section.materials) {
+          console.log(`Uploading materials for section ${i + 1}...`);
+          const materialHash = await uploadFile(section.materials);
+          await courseClient.addMaterial(
+            courseId,
+            i,
+            materialHash
+          );
+        }
+      }
+  
       setUploadProgress(100);
       alert('Course created successfully!');
       navigate('/courses');
-
+  
     } catch (err) {
       console.error('Error creating course:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to create course. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className={`min-h-screen ${theme.background} ${theme.text.primary} py-12 px-4 sm:px-6 lg:px-8`}>
       <div className="max-w-4xl mx-auto">
