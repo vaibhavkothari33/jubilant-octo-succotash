@@ -62,7 +62,7 @@ class CourseMarketplaceClient {
   }
   
   // Create a new course
-  async createCourse(title, description, thumbnailIpfsHash, introVideoIpfsHash, price, options = {}) {
+  async createCourse(title, description, thumbnailIpfsHash, introVideoIpfsHash, duration, price, options = {}) {
     const priceWei = this.web3.utils.toWei(price.toString(), 'ether');
     
     const tx = this.contract.methods.createCourse(
@@ -70,6 +70,7 @@ class CourseMarketplaceClient {
       description,
       thumbnailIpfsHash,
       introVideoIpfsHash,
+      duration,
       priceWei
     );
     
